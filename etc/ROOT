@@ -1,0 +1,4 @@
+session "Sail-Morello" = "Sail" +
+  options [document = false]
+  theories
+    Morello_lemmas

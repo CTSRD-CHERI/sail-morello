@@ -1,0 +1,73 @@
+(*============================================================================*)
+(*  BSD 3-clause Clear License                                                *)
+(*                                                                            *)
+(*  Copyright (c) 2022                                                        *)
+(*    Arm Limited (or its affiliates),                                        *)
+(*    Thomas Bauereiss,                                                       *)
+(*    Brian Campbell,                                                         *)
+(*    Alasdair Armstrong,                                                     *)
+(*    Alastair Reid,                                                          *)
+(*    Peter Sewell                                                            *)
+(*                                                                            *)
+(*  All rights reserved.                                                      *)
+(*                                                                            *)
+(*  Redistribution and use in source and binary forms, with or without        *)
+(*  modification, are permitted (subject to the limitations in the            *)
+(*  disclaimer below) provided that the following conditions are met:         *)
+(*                                                                            *)
+(*    * Redistributions of source code must retain the above copyright        *)
+(*      notice, this list of conditions and the following disclaimer.         *)
+(*    * Redistributions in binary form must reproduce the above copyright     *)
+(*      notice, this list of conditions and the following disclaimer in the   *)
+(*      documentation and/or other materials provided with the distribution.  *)
+(*    * Neither the name of ARM Limited nor the names of its contributors     *)
+(*      may be used to endorse or promote products derived from this          *)
+(*      software without specific prior written permission.                   *)
+(*                                                                            *)
+(*  NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED   *)
+(*  BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND   *)
+(*  CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING,    *)
+(*  BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND         *)
+(*  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE   *)
+(*  COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,      *)
+(*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT  *)
+(*  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF      *)
+(*  USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON    *)
+(*  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT   *)
+(*  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF  *)
+(*  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.         *)
+(*============================================================================*)
+
+open import Pervasives_extra
+open import Sail2_instr_kinds
+open import Sail2_values
+open import Sail2_operators_mwords
+open import Sail2_prompt_monad
+open import Sail2_prompt
+open import Sail2_undefined
+open import Prelude
+open import Morello_types
+
+val write_tag_bool : forall 'addrsize 'e. Size 'addrsize => write_kind -> mword 'addrsize -> integer -> bool -> monad register_value unit 'e
+let write_tag_bool wk addr sz tag =
+  (* FIXME: The monad does not currently support writing a tag without data.
+   * We probably want to support this at some point, not just for CHERI tags,
+   * but also other kinds of metadata (e.g. MTE).  As a workaround in the
+   * meantime, we overapproximate the set of possible behaviours by
+   * non-deterministically choosing a data value.  An alternative workaround is
+   * to load the data from memory and write it back, but that leads to problems
+   * with the capability monotonicity proof (the properties require an
+   * authorising capability with load permission, if a load is performed). *)
+  mword_nondet () >>= fun (data : mword ty128) ->
+  write_memt wk addr sz data (bitU_of_bool tag) >>= fun _ ->
+  return ()
+
+val __UNKNOWN_Capability : forall 'e. unit -> monad register_value (mword ty129) 'e
+let __UNKNOWN_Capability () = choose_convert bitvector_129_dec_of_regval "UNKNOWN_Capability"
+
+val __UNKNOWN_bits : forall 'n. Size 'n => integer -> M (mword 'n)
+let __UNKNOWN_bits n =
+  if n = 129 then
+    __UNKNOWN_Capability () >>= (fun c ->
+    return (extz_vec n c))
+  else undefined_bitvector n
