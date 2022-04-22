@@ -23,9 +23,14 @@ choices for implementation-defined behaviour.
 
 ## Building
 
-With a recent version of [Sail][sail] installed (last tested using revision
-`5d18bd95`), use the Makefile target `gen_c` to generate an emulator, and
-`gen_isa` to generate a model for the Isabelle theorem prover.
+The release tarballs on Github contain snapshots of the artifacts generated
+from the Sail specification (although for the C emulator, they contain only the
+source, no binaries;  use the `gen_c` Makefile target to build a binary).
+
+To freshly build the artifacts, make sure that a recent version of [Sail][sail]
+is installed (last tested using revision `87118b39`), and use the Makefile
+target `gen_c` to generate an emulator, and `gen_isa` to generate a model for
+the Isabelle theorem prover.
 
 The `boot.sh` script downloads, builds, and runs a (non-capability AArch64)
 version of Linux above the C emulator.

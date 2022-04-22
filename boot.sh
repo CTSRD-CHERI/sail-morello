@@ -9,6 +9,12 @@ then
     echo "on ubuntu, apt install device-tree-compiler"
 fi
 
+if [ ! -f ./c/morello ]
+then
+    echo "cannot find C emulator;  please build it by running \`make gen_c\`"
+    exit 1
+fi
+
 BOOT="https://github.com/Alasdair/sail-arm-boot/archive/master.zip"
 
 while true; do
@@ -83,12 +89,6 @@ while true; do
 	* ) echo "Please answer yes or no.";;
     esac
 done
-
-if [ ! -f ./c/morello ]
-then
-    echo "cannot find built C emulator, exiting"
-    exit 1
-fi
 
 ./c/morello -b 0x80000000,bootloader.bin -b 0x81000000,sail.dtb -b 0x82080000,Image -C cpu.cpu0.RVBAR=0x80000000 2> /dev/null || true
 
