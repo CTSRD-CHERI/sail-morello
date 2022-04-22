@@ -1,14 +1,14 @@
-c/morello.c
+# c/morello.c
 c/morello
-isabelle/Morello_bindings.thy
-isabelle/Morello_lemmas.thy
-isabelle/Morello.thy
-isabelle/Morello_types.thy
-isabelle/Prelude.thy
-isabelle/ROOT
-lem/morello.lem
-lem/morello_types.lem
-lem/prelude.lem
+# isabelle/Morello_bindings.thy
+# isabelle/Morello_lemmas.thy
+# isabelle/Morello.thy
+# isabelle/Morello_types.thy
+# isabelle/Prelude.thy
+# isabelle/ROOT
+# lem/morello.lem
+# lem/morello_types.lem
+# lem/prelude.lem
 src/z3_problems
 
 # Linux booting files

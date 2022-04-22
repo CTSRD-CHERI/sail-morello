@@ -1,0 +1,443 @@
+theory Hoare
+  imports
+    Sail.State_lemmas
+    "HOL-Eisbach.Eisbach"
+begin
+
+(*adhoc_overloading
+  Monad_Syntax.bind State_monad.bindS*)
+
+(* We use the Hoare logic also used by the seL4 project [1]. It features not only Hoare triples, but
+also quadruples with two postconditions: one for the case where the computation succeeds, and one
+for the case where there is an exception.
+
+[1] D. Cock, G. Klein, and T. Sewell, ‘Secure Microkernels, State Monads and Scalable Refinement’,
+in Theorem Proving in Higher Order Logics, 2008, pp. 167–182.
+*)
+
+type_synonym 'regs predS = "'regs sequential_state \<Rightarrow> bool"
+
+definition PrePost :: "'regs predS \<Rightarrow> ('regs, 'a, 'e) monadS \<Rightarrow> (('a, 'e) result \<Rightarrow> 'regs predS) \<Rightarrow> bool"
+  where "PrePost P f Q \<equiv> (\<forall>s. P s \<longrightarrow> (\<forall>(r, s') \<in> f s. Q r s'))"
+
+definition PrePostE :: "'regs predS \<Rightarrow> ('regs, 'a, 'e) monadS \<Rightarrow> ('a \<Rightarrow> 'regs predS) \<Rightarrow> ('e ex \<Rightarrow> 'regs predS) \<Rightarrow> bool"
+  where "PrePostE P f Q E \<equiv> PrePost P f (\<lambda>v. case v of Value a \<Rightarrow> Q a | Ex e \<Rightarrow> E e)"
+
+lemmas PrePost_defs = PrePost_def PrePostE_def
+
+lemma PrePostI:
+  assumes "\<And>s r s'. P s \<Longrightarrow> (r, s') \<in> f s \<Longrightarrow> Q r s'"
+  shows "PrePost P f Q"
+  using assms unfolding PrePost_def by auto
+
+lemma PrePostE_I[case_names Val Err]:
+  assumes "\<And>s a s'. P s \<Longrightarrow> (Value a, s') \<in> f s \<Longrightarrow> Q a s'"
+    and "\<And>s e s'. P s \<Longrightarrow> (Ex e, s') \<in> f s \<Longrightarrow> E e s'"
+  shows "PrePostE P f Q E"
+  using assms unfolding PrePostE_def by (intro PrePostI) (auto split: result.splits)
+
+lemma PrePostE_PrePost:
+  assumes "PrePost P m (\<lambda>v. case v of Value a \<Rightarrow> Q a | Ex e \<Rightarrow> E e)"
+  shows "PrePostE P m Q E"
+  using assms unfolding PrePostE_def by auto
+
+lemma PrePost_elim:
+  assumes "PrePost P f Q" and "P s" and "(r, s') \<in> f s"
+  obtains "Q r s'"
+  using assms by (fastforce simp: PrePost_defs)
+
+lemma PrePostE_elim:
+  assumes "PrePostE P f Q E" and "P s" and "(r, s') \<in> f s"
+  obtains
+    (Val) v where "r = Value v" "Q v s'"
+  | (Ex) e where "r = Ex e" "E e s'"
+  using assms by (cases r; fastforce simp: PrePost_defs)
+
+lemma PrePost_consequence:
+  assumes "PrePost A f B"
+    and "\<And>s. P s \<Longrightarrow> A s" and "\<And>v s. B v s \<Longrightarrow> Q v s"
+  shows "PrePost P f Q"
+  using assms unfolding PrePost_def by (blast intro: list.pred_mono_strong)
+
+lemma PrePost_strengthen_pre:
+  assumes "PrePost A f C" and  "\<And>s. B s \<Longrightarrow> A s"
+  shows "PrePost B f C"
+  using assms by (rule PrePost_consequence)
+
+lemma PrePost_weaken_post:
+  assumes "PrePost A f B" and  "\<And>v s. B v s \<Longrightarrow> C v s"
+  shows "PrePost A f C"
+  using assms by (blast intro: PrePost_consequence)
+
+lemma PrePostE_consequence:
+  assumes "PrePostE A f B C"
+    and "\<And>s. P s \<Longrightarrow> A s" and "\<And>v s. B v s \<Longrightarrow> Q v s" and "\<And>e s. C e s \<Longrightarrow> E e s"
+  shows "PrePostE P f Q E"
+  using assms unfolding PrePostE_def by (auto elim: PrePost_consequence split: result.splits)
+
+lemma PrePostE_strengthen_pre:
+  assumes "PrePostE R f Q E" and "\<And>s. P s \<Longrightarrow> R s"
+  shows "PrePostE P f Q E"
+  using assms PrePostE_consequence by blast
+
+lemma PrePostE_weaken_post:
+  assumes "PrePostE A f B E" and  "\<And>v s. B v s \<Longrightarrow> C v s"
+  shows "PrePostE A f C E"
+  using assms by (blast intro: PrePostE_consequence)
+
+named_theorems vcg
+named_theorems vcgE
+
+lemma PrePost_any: "PrePost (\<lambda>s. \<forall>(r, s') \<in> m s. Q r s') m Q"
+  unfolding PrePost_def by auto
+
+lemma PrePost_returnS[intro, vcg]: "PrePost (P (Value x)) (returnS x) P"
+  unfolding PrePost_def returnS_def by auto
+
+lemma PrePostE_returnS[vcgE]: "PrePostE (P x) (returnS x) P Q"
+  unfolding PrePostE_def by (auto intro: PrePost_strengthen_pre)
+
+lemma PrePost_bindS[intro, vcg]:
+  assumes f: "\<And>s a s'. (Value a, s') \<in> m s \<Longrightarrow> PrePost (R a) (f a) Q"
+    and m: "PrePost P m (\<lambda>r. case r of Value a \<Rightarrow> R a | Ex e \<Rightarrow> Q (Ex e))"
+  shows "PrePost P (bindS m f) Q"
+proof (intro PrePostI)
+  fix s r s'
+  assume P: "P s" and bind: "(r, s') \<in> bindS m f s"
+  from bind show "Q r s'"
+  proof (cases r s' m f s rule: bindS_cases)
+    case (Value a a' s'')
+    then have "R a' s''" using P m by (auto elim: PrePost_elim)
+    then show ?thesis using Value f by (auto elim: PrePost_elim)
+  next
+    case (Ex_Left e)
+    then show ?thesis using P m by (auto elim: PrePost_elim)
+  next
+    case (Ex_Right e a s'')
+    then have "R a s''" using P m by (auto elim: PrePost_elim)
+    then show ?thesis using Ex_Right f by (auto elim: PrePost_elim)
+  qed
+qed
+
+lemma PrePostE_bindS[vcgE]:
+  assumes f: "\<And>a. PrePostE (R a) (f a) Q E" and m: "PrePostE P m R E"
+  shows "PrePostE P (bindS m f) Q E"
+  using assms
+  by (fastforce simp: PrePostE_def cong: result.case_cong)
+
+lemma PrePost_readS[intro, vcg]: "PrePost (\<lambda>s. P (Value (f s)) s) (readS f) P"
+  unfolding PrePost_def readS_def returnS_def by auto
+
+lemma PrePostE_readS[vcgE]: "PrePostE (\<lambda>s. P (f s) s) (readS f) P Q"
+  unfolding PrePostE_def by (auto intro: PrePost_strengthen_pre)
+
+lemma PrePost_updateS[intro, vcg]: "PrePost (\<lambda>s. P (Value ()) (f s)) (updateS f) P"
+  unfolding PrePost_def updateS_def returnS_def by auto
+
+lemma PrePostE_updateS[vcgE]: "PrePostE (\<lambda>s. P () (f s)) (updateS f) P Q"
+  unfolding PrePostE_def by (auto intro: PrePost_strengthen_pre)
+
+lemma PrePost_if:
+  assumes "b \<Longrightarrow> PrePost P f Q" and "\<not>b \<Longrightarrow> PrePost P g Q"
+  shows "PrePost P (if b then f else g) Q"
+  using assms by auto
+
+lemma PrePost_if_branch[vcg]:
+  assumes "b \<Longrightarrow> PrePost Pf f Q" and "\<not>b \<Longrightarrow> PrePost Pg g Q"
+  shows "PrePost (if b then Pf else Pg) (if b then f else g) Q"
+  using assms by auto
+
+lemma PrePost_if_then:
+  assumes "b" and "PrePost P f Q"
+  shows "PrePost P (if b then f else g) Q"
+  using assms by auto
+
+lemma PrePost_if_else:
+  assumes "\<not>b" and "PrePost P g Q"
+  shows "PrePost P (if b then f else g) Q"
+  using assms by auto
+
+lemma PrePostE_if:
+  assumes "b \<Longrightarrow> PrePostE P f Q E" and "\<not>b \<Longrightarrow> PrePostE P g Q E"
+  shows "PrePostE P (if b then f else g) Q E"
+  using assms by auto
+
+lemma PrePostE_if_branch[vcgE]:
+  assumes "b \<Longrightarrow> PrePostE Pf f Q E" and "\<not>b \<Longrightarrow> PrePostE Pg g Q E"
+  shows "PrePostE (if b then Pf else Pg) (if b then f else g) Q E"
+  using assms by (auto)
+
+lemma PrePost_prod_cases[vcg]:
+  assumes "PrePost P (f (fst x) (snd x)) Q"
+  shows "PrePost P (case x of (a, b) \<Rightarrow> f a b) Q"
+  using assms by (auto split: prod.splits)
+
+lemma PrePostE_prod_cases[vcgE]:
+  assumes "PrePostE P (f (fst x) (snd x)) Q E"
+  shows "PrePostE P (case x of (a, b) \<Rightarrow> f a b) Q E"
+  using assms by (auto split: prod.splits)
+
+lemma PrePost_option_cases[vcgE]:
+  assumes "\<And>a. PrePost (PS a) (s a) Q" and "PrePost PN n Q"
+  shows "PrePost (case x of Some a \<Rightarrow> PS a | None \<Rightarrow> PN) (case x of Some a \<Rightarrow> s a | None \<Rightarrow> n) Q"
+  using assms by (auto split: option.splits)
+
+lemma PrePostE_option_cases[vcgE]:
+  assumes "\<And>a. PrePostE P (s a) Q E" and "PrePostE P n Q E"
+  shows "PrePostE P (case x of Some a \<Rightarrow> s a | None \<Rightarrow> n) Q E"
+  using assms by (auto split: option.splits)
+
+lemma PrePost_let[intro, vcg]:
+  assumes "PrePost P (m y) Q"
+  shows "PrePost P (let x = y in m x) Q"
+  using assms by auto
+
+lemma PrePostE_let[vcgE]:
+  assumes "PrePostE P (m y) Q E"
+  shows "PrePostE P (let x = y in m x) Q E"
+  using assms by auto
+
+lemma PrePost_assert_expS[intro, vcg]: "PrePost (if c then P (Value ()) else P (Ex (Failure m))) (assert_expS c m) P"
+  unfolding PrePost_def assert_expS_def by (auto simp: returnS_def failS_def)
+
+lemma PrePostE_assert_expS[vcgE]: "PrePostE (if c then P () else Q (Failure m)) (assert_expS c m) P Q"
+  unfolding PrePostE_def by (auto intro: PrePost_strengthen_pre)
+
+lemma PrePost_chooseS[intro, vcg]: "PrePost (\<lambda>s. \<forall>x \<in> xs. Q (Value x) s) (chooseS xs) Q"
+  by (auto simp: PrePost_def chooseS_def)
+
+lemma PrePost_failS[intro, vcg]: "PrePost (Q (Ex (Failure msg))) (failS msg) Q"
+  by (auto simp: PrePost_def failS_def)
+
+method vcg uses add = (use nothing in \<open>rule PrePost_strengthen_pre, (rule add vcg)+\<close>)
+method vcgE uses add = (use nothing in \<open>rule PrePostE_strengthen_pre, (rule add vcgE)+\<close>)
+
+subsection \<open>Deterministic expressions\<close>
+
+definition determ ::
+  "('regs, 'a, 'e) monadS
+   \<Rightarrow> ('regs sequential_state \<Rightarrow> ('a, 'e) result)
+   \<Rightarrow> ('regs sequential_state \<Rightarrow> 'regs sequential_state) \<Rightarrow> bool" where
+  "determ m r s' \<equiv> (\<forall>s. m s = {(r s, s' s)})"
+
+definition determResult :: "('regs, 'a, 'e) monadS \<Rightarrow> ('regs sequential_state \<Rightarrow> ('a, 'e) result) \<Rightarrow> bool" where
+  "determResult m r = (\<forall>s. \<exists>s'. m s = {(r s, s')})"
+
+definition determState :: "('regs, 'a, 'e) monadS \<Rightarrow> ('regs sequential_state \<Rightarrow> 'regs sequential_state) \<Rightarrow> bool" where
+  "determState m s' = (\<forall>s. \<exists>r. m s = {(r, s' s)})"
+
+abbreviation "determValue m v \<equiv> determResult m (\<lambda>s. Value (v s))"
+abbreviation "determEx m e \<equiv> determResult m (\<lambda>s. Ex (e s))"
+
+lemma determI[intro]:
+  assumes "\<And>s. m s = {(r s, s' s)}"
+  shows "determ m r s'"
+  using assms by (auto simp: determ_def)
+
+lemma singleton_determ:
+  assumes "determ m r s'"
+  shows "m s = {(r s, s' s)}"
+  using assms by (auto simp: determ_def)
+
+lemma determResult_determ[intro]: "determ m r s' \<Longrightarrow> determResult m r"
+  and determState_determ[intro]: "determ m r s' \<Longrightarrow> determState m s'"
+  by (auto simp: determ_def determResult_def determState_def)
+
+lemma determResult_determState_determ:
+  assumes "determ m r s'"
+  obtains "determResult m r" and "determState m s'"
+  using assms by auto
+
+lemma determ_determResult_determState:
+  assumes "determResult m r" and "determState m s'"
+  shows "determ m r s'"
+  unfolding determ_def
+proof
+  fix s
+  from assms(1) obtain s'' where "m s = {(r s, s'')}" by (auto simp: determResult_def)
+  moreover from assms(2) obtain r' where "m s = {(r', s' s)}" by (auto simp: determState_def)
+  ultimately show "m s = {(r s, s' s)}" by auto
+qed
+
+lemma determState_determResult:
+  assumes "determResult m r"
+  obtains s' where "determState m s'"
+  using choice[OF assms[unfolded determResult_def]]
+  by blast
+
+lemma determResult_determState:
+  assumes "determState m s'"
+  obtains r where "determResult m r"
+  using choice[OF assms[unfolded determState_def]]
+  by blast
+
+lemma determ_determResult:
+  assumes "determResult m r"
+  obtains s' where "determ m r s'"
+  using assms by (blast intro: determ_determResult_determState elim: determState_determResult)
+
+lemma determ_determState:
+  assumes "determState m s'"
+  obtains r where "determ m r s'"
+  using assms by (blast intro: determ_determResult_determState elim: determResult_determState)
+
+lemma determ_monadS_eqI:
+  assumes "determ m r s'"
+      and "determ n r s'"
+    shows "m = n"
+  using assms unfolding determ_def by auto
+
+named_theorems determ_intro
+  
+(*lemma determValue_unit [simp]:
+  fixes m :: "('regs, unit, 'e) monadS"
+  shows "determValue m (\<lambda>_. Value ())"
+unfolding determValue_def
+by simp*)
+
+lemma bindS_determ:
+  assumes "determ m r s'"
+  shows "bindS m n = (\<lambda>s. case r s of Value a \<Rightarrow> n a (s' s) | Ex e \<Rightarrow> {(Ex e, s' s)})"
+    (is "?l = ?r")
+  using assms by (intro monadS_eqI) (auto simp: determ_def bindS_def)
+
+subsubsection \<open>@{const returnS}\<close>
+
+lemma determ_returnS[determ_intro]:
+  "determ (returnS x) (\<lambda>_. Value x) (\<lambda>s. s)"
+  by (auto simp: returnS_def)
+
+lemma determValue_returnS: "determValue (returnS x) (\<lambda>_. x)"
+  by (blast intro: determ_intro)
+
+subsubsection \<open>@{const readS}\<close>
+
+lemma determ_readS[determ_intro]:
+  "determ (readS f) (\<lambda>s. Value (f s)) (\<lambda>s. s)"
+  by (auto simp: readS_def returnS_def)
+
+subsubsection \<open>@{const updateS}\<close>
+
+lemma determ_updateS[determ_intro]:
+  "determ (updateS f) (\<lambda>_. Value ()) f"
+  by (auto simp: updateS_def returnS_def)
+
+subsubsection \<open>@{const bindS}\<close>
+
+lemma determ_bindS [determ_intro]:
+  assumes "determ m rm sm"
+    and "\<And>a. determ (n a) (rn a) (sn a)"
+    and "\<And>s. rb s = (case rm s of Value a \<Rightarrow> rn a (sm s) | Ex e \<Rightarrow> Ex e)"
+    and "\<And>s. sb s = (case rm s of Value a \<Rightarrow> sn a (sm s) | Ex e \<Rightarrow> sm s)"
+  shows "determ (bindS m n) rb sb"
+  unfolding bindS_determ[OF assms(1)] singleton_determ[OF assms(2)]
+  by (intro determI) (auto simp: assms(3,4) split: result.splits)
+
+subsubsection \<open>@{const foreachS}\<close>
+
+lemma determ_foreachS[determ_intro]:
+  assumes "\<And>x vars. determ (m x vars) (\<lambda>s. Value (v x vars s)) (s' x vars)"
+    and "\<And>s. rf s = Value (fst (List.fold (\<lambda>x (vars, s). (v x vars s, s' x vars s)) xs (vars, s)))"
+    and "\<And>s. sf s = snd (List.fold (\<lambda>x (vars, s). (v x vars s, s' x vars s)) xs (vars, s))"
+  shows "determ (foreachS xs vars m) rf sf"
+  unfolding assms(2,3)
+  by (induction xs arbitrary: vars) (auto intro!: determ_intro assms(1))
+
+subsection \<open>Invariants\<close>
+
+abbreviation "IsInvariant p f \<equiv> PrePost p f (\<lambda>_. p)"
+
+lemma IsInvariant_def:
+  shows "IsInvariant p f = (\<forall>s. p s \<longrightarrow> (\<forall>(r, s') \<in> f s. p s'))"
+unfolding PrePost_def ..
+
+lemma IsInvariant_constant [intro!, simp]:
+  shows "IsInvariant (\<lambda>_. x) m"
+  unfolding IsInvariant_def
+  by simp
+
+lemma IsInvariant_returnS [intro!, simp]:
+  shows "IsInvariant p (returnS x)"
+  by vcg
+
+lemma IsInvariant_readS [intro!, simp]:
+  shows "IsInvariant p (readS f)"
+  by vcg
+
+lemma case_result_ignore[simp]: "(case r of Value a \<Rightarrow> p | Ex a \<Rightarrow> p) = p"
+  by (cases r) auto
+
+lemma IsInvariant_bindS [intro]:
+  assumes "IsInvariant p m"
+    and "\<And>a. IsInvariant p (n a)"
+  shows "IsInvariant p (bindS m n)"
+  using assms
+  by (intro PrePost_bindS) (auto simp: PrePostE_def)
+
+lemma IsInvariant_foreachS [intro]:
+  assumes "\<And>x vars. IsInvariant p (m x vars)"
+  shows "IsInvariant p (foreachS xs vars m)"
+  using assms
+  by (induction xs arbitrary: vars) auto
+
+(*lemma IsInvariant_update_state_StatePart [simp]:
+  shows "IsInvariant p (update_state (StatePart m)) = IsInvariant p m"
+unfolding IsInvariant_def
+by (simp add: ValueAndStatePart_simp)
+
+lemmas IsInvariant_update_state_StatePartE =
+  IsInvariant_update_state_StatePart[THEN iffD2]*)
+
+(*lemmas IsInvariant_conj = 
+  PrePost_weakest_pre_conj[where p\<^sub>1=p and q\<^sub>1="\<lambda>_. p" and p\<^sub>2=q and q\<^sub>2="\<lambda>_. q"] for p q
+
+lemmas IsInvariant_disj = 
+  PrePost_weakest_pre_disj[where p\<^sub>1=p and q\<^sub>1="\<lambda>_. p" and p\<^sub>2=q and q\<^sub>2="\<lambda>_. q"] for p q*)
+
+(* lemma IsInvariant_conj:
+  assumes "IsInvariant p m"
+      and "\<And>s. StatePart p s = s"
+      and "IsInvariant q m"
+  shows "IsInvariant (bind p (\<lambda>a. bind q (\<lambda>b. return (a \<and> b)))) m"
+using assms
+by (intro PrePost_conj) auto
+
+lemma IsInvariant_conj_3:
+  assumes "IsInvariant p\<^sub>1 m"
+      and "\<And>s. StatePart p\<^sub>1 s = s"
+      and "IsInvariant p\<^sub>2 m"
+      and "\<And>s. StatePart p\<^sub>2 s = s"
+      and "IsInvariant p\<^sub>3 m"
+  shows "IsInvariant (bind p\<^sub>1 (\<lambda>a. bind p\<^sub>2 (\<lambda>b. bind p\<^sub>3 (\<lambda>c. return (a \<and> b \<and> c))))) m"
+using assms
+unfolding IsInvariant_def
+by (auto simp: ValueAndStatePart_simps)
+
+lemma IsInvariant_disj:
+  assumes "IsInvariant p m"
+      and "\<And>s. StatePart p s = s"
+      and "IsInvariant q m"
+  shows "IsInvariant (bind p (\<lambda>a. bind q (\<lambda>b. return (a \<or> b)))) m"
+using assms
+by (intro PrePost_disj) auto
+
+lemma IsInvariant_disj_3:
+  assumes "IsInvariant p\<^sub>1 m"
+      and "\<And>s. StatePart p\<^sub>1 s = s"
+      and "IsInvariant p\<^sub>2 m"
+      and "\<And>s. StatePart p\<^sub>2 s = s"
+      and "IsInvariant p\<^sub>3 m"
+  shows "IsInvariant (bind p\<^sub>1 (\<lambda>a. bind p\<^sub>2 (\<lambda>b. bind p\<^sub>3 (\<lambda>c. return (a \<or> b \<or> c))))) m"
+using assms
+unfolding IsInvariant_def
+by (auto simp: ValueAndStatePart_simps) *)
+
+subsection \<open>Result and state parts\<close>
+
+definition ResultPart :: "('regs, 'a, 'e) monadS \<Rightarrow> 'regs sequential_state \<Rightarrow> ('a, 'e) result set" where
+  "ResultPart m s \<equiv> fst ` (m s)"
+
+definition StatePart :: "('regs, 'a, 'e) monadS \<Rightarrow> 'regs sequential_state \<Rightarrow> 'regs sequential_state set" where
+  "StatePart m s \<equiv> snd ` (m s)"
+
+end

@@ -1,3 +1,7 @@
+The files in this repository are distributed under the BSD 3-clause Clear
+license below, except for the snapshots of the Lem and Sail Isabelle libraries
+in the lib directory, which come with their own license files.
+
 BSD 3-clause Clear License
 
 Copyright (c) 2022
