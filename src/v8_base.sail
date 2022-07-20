@@ -39453,8 +39453,14 @@ function FPMaxNum (op1__arg, op2__arg, fpcr) = {
     type1 : FPType = undefined;
     type2 : FPType = undefined;
     assert('N == 16 | 'N == 32 | 'N == 64);
-    (type1, __ignore_4, __ignore_5) = FPUnpack(op1, fpcr);
-    (type2, __ignore_6, __ignore_7) = FPUnpack(op2, fpcr);
+    let (__tup_0 : FPType, _, _) = FPUnpack(op1, fpcr) in
+      {
+          type1 = __tup_0
+      };
+    let (__tup_0 : FPType, _, _) = FPUnpack(op2, fpcr) in
+      {
+          type2 = __tup_0
+      };
     if type1 == FPType_QNaN & type2 != FPType_QNaN then {
         op1 = FPInfinity('N, 0b1)
     } else if type1 != FPType_QNaN & type2 == FPType_QNaN then {
@@ -39509,8 +39515,14 @@ function FPMinNum (op1__arg, op2__arg, fpcr) = {
     type1 : FPType = undefined;
     type2 : FPType = undefined;
     assert('N == 16 | 'N == 32 | 'N == 64);
-    (type1, __ignore_8, __ignore_9) = FPUnpack(op1, fpcr);
-    (type2, __ignore_10, __ignore_11) = FPUnpack(op2, fpcr);
+    let (__tup_0 : FPType, _, _) = FPUnpack(op1, fpcr) in
+      {
+          type1 = __tup_0
+      };
+    let (__tup_0 : FPType, _, _) = FPUnpack(op2, fpcr) in
+      {
+          type2 = __tup_0
+      };
     if type1 == FPType_QNaN & type2 != FPType_QNaN then {
         op1 = FPInfinity('N, 0b0)
     } else if type1 != FPType_QNaN & type2 == FPType_QNaN then {
@@ -42254,7 +42266,8 @@ function AArch64_S1AttrDecode (SH, attr, acctype) = {
       [_, _, bitzero, bitzero] => true,
       _ => false
     }) : bool) then {
-        (__ignore_12, attrfield) = ConstrainUnpredictableBits(0 + (index + 7 - index + 1), Unpredictable_RESMAIR)
+        let (_, __tup_1 : bits(0 + ('index + 7 - 'index + 1))) = ConstrainUnpredictableBits(0 + (index + 7 - index + 1), Unpredictable_RESMAIR);
+        attrfield = __tup_1
     } else ();
     if attrfield[7 .. 4] == 0b0000 then {
         memattrs.memtype = MemType_Device;
@@ -43723,14 +43736,18 @@ function VACheckAddress (base, addr64, size, requested_perms, acctype) = {
     } else {
         c = VAToCapability(base)
     };
-    __ignore_13 = CheckCapability(c, addr64, size, requested_perms, acctype)
+    let _ = CheckCapability(c, addr64, size, requested_perms, acctype);
+    ()
 }
 
 val CapGetBase : bits(129) -> bits(CAP_VALUE_NUM_BITS) effect {escape, undef}
 
 function CapGetBase c = {
     base : bits(CAP_BOUND_NUM_BITS) = undefined;
-    (base, __ignore_14, __ignore_15) = CapGetBounds(c);
+    let (__tup_0 : bits(CAP_BOUND_NUM_BITS), _, _) = CapGetBounds(c) in
+      {
+          base = __tup_0
+      };
     return(Slice(base, 0, CAP_VALUE_NUM_BITS))
 }
 
@@ -45176,7 +45193,13 @@ val CapIsBaseAboveLimit : bits(129) -> bool effect {escape, undef}
 function CapIsBaseAboveLimit c = {
     base : bits(CAP_BOUND_NUM_BITS) = undefined;
     limit : bits(CAP_BOUND_NUM_BITS) = undefined;
-    (base, limit, __ignore_16) = CapGetBounds(c);
+    let (__tup_0 : bits(CAP_BOUND_NUM_BITS), __tup_1 : bits(CAP_BOUND_NUM_BITS), _) =
+      CapGetBounds(c)
+    in
+      {
+          base = __tup_0;
+          limit = __tup_1
+      };
     return(CapUnsignedGreaterThan(base, limit))
 }
 
@@ -45206,7 +45229,10 @@ val CapGetOffset : bits(129) -> bits(CAP_VALUE_NUM_BITS) effect {escape, undef}
 
 function CapGetOffset c = {
     base : bits(CAP_BOUND_NUM_BITS) = undefined;
-    (base, __ignore_17, __ignore_18) = CapGetBounds(c);
+    let (__tup_0 : bits(CAP_BOUND_NUM_BITS), _, _) = CapGetBounds(c) in
+      {
+          base = __tup_0
+      };
     let offset : bits(65) = (0b0 @ CapGetValue(c)) - base;
     return(Slice(offset, 0, CAP_VALUE_NUM_BITS))
 }
@@ -45216,7 +45242,13 @@ val CapGetLength : bits(129) -> bits(CAP_LENGTH_NUM_BITS) effect {escape, undef}
 function CapGetLength c = {
     base : bits(CAP_BOUND_NUM_BITS) = undefined;
     limit : bits(CAP_BOUND_NUM_BITS) = undefined;
-    (base, limit, __ignore_19) = CapGetBounds(c);
+    let (__tup_0 : bits(CAP_BOUND_NUM_BITS), __tup_1 : bits(CAP_BOUND_NUM_BITS), _) =
+      CapGetBounds(c)
+    in
+      {
+          base = __tup_0;
+          limit = __tup_1
+      };
     return(limit - base)
 }
 
@@ -45235,7 +45267,10 @@ val CapSetOffset : (bits(129), bits(CAP_VALUE_NUM_BITS)) -> bits(129) effect {es
 
 function CapSetOffset (c, offset) = {
     base : bits(CAP_BOUND_NUM_BITS) = undefined;
-    (base, __ignore_20, __ignore_21) = CapGetBounds(c);
+    let (__tup_0 : bits(CAP_BOUND_NUM_BITS), _, _) = CapGetBounds(c) in
+      {
+          base = __tup_0
+      };
     let newvalue : bits(CAP_VALUE_NUM_BITS) = base[CAP_VALUE_NUM_BITS - 1 .. 0] + offset;
     let increment_name : bits(CAP_VALUE_NUM_BITS) = newvalue - CapGetValue(c);
     return(CapAdd(c, increment_name))

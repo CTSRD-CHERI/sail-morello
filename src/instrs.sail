@@ -2971,7 +2971,10 @@ function execute_GCBASE_R_C_C (d, n) = {
     CheckCapabilitiesEnabled();
     let operand : bits(129) = if n == 31 then CSP_read() else C_read(n);
     result : bits(CAP_BOUND_NUM_BITS) = undefined;
-    (result, __ignore_22, __ignore_23) = CapGetBounds(operand);
+    let (__tup_0 : bits(CAP_BOUND_NUM_BITS), _, _) = CapGetBounds(operand) in
+      {
+          result = __tup_0
+      };
     X_set(0 + (63 - 0 + 1), d) = result[63 .. 0]
 }
 
@@ -3057,7 +3060,10 @@ function execute_GCLIM_R_C_C (d, n) = {
     let operand : bits(129) = if n == 31 then CSP_read() else C_read(n);
     result : bits(64) = undefined;
     limit : bits(CAP_BOUND_NUM_BITS) = undefined;
-    (__ignore_24, limit, __ignore_25) = CapGetBounds(operand);
+    let (_, __tup_1 : bits(CAP_BOUND_NUM_BITS), _) = CapGetBounds(operand) in
+      {
+          limit = __tup_1
+      };
     if [limit[64]] == 0b1 then {
         result = Ones(64)
     } else {
@@ -11289,7 +11295,12 @@ function decode_and_log_imm_aarch64_instrs_integer_logical_immediate (Rd, Rn, im
     if sf == 0b0 & N != 0b0 then {
         throw(Error_Undefined())
     } else ();
-    (imm, __ignore_26) = DecodeBitMasks(datasize, N, imms, immr, true);
+    let (__tup_0 : bits('datasize), _) =
+      DecodeBitMasks(datasize, N, imms, immr, true)
+    in
+      {
+          imm = __tup_0
+      };
     execute_aarch64_instrs_integer_logical_immediate(d, datasize, imm, n, op, setflags)
 }
 
@@ -11336,7 +11347,12 @@ function decode_orr_log_imm_aarch64_instrs_integer_logical_immediate (Rd, Rn, im
     if sf == 0b0 & N != 0b0 then {
         throw(Error_Undefined())
     } else ();
-    (imm, __ignore_27) = DecodeBitMasks(datasize, N, imms, immr, true);
+    let (__tup_0 : bits('datasize), _) =
+      DecodeBitMasks(datasize, N, imms, immr, true)
+    in
+      {
+          imm = __tup_0
+      };
     execute_aarch64_instrs_integer_logical_immediate(d, datasize, imm, n, op, setflags)
 }
 
@@ -11383,7 +11399,12 @@ function decode_ands_log_imm_aarch64_instrs_integer_logical_immediate (Rd, Rn, i
     if sf == 0b0 & N != 0b0 then {
         throw(Error_Undefined())
     } else ();
-    (imm, __ignore_28) = DecodeBitMasks(datasize, N, imms, immr, true);
+    let (__tup_0 : bits('datasize), _) =
+      DecodeBitMasks(datasize, N, imms, immr, true)
+    in
+      {
+          imm = __tup_0
+      };
     execute_aarch64_instrs_integer_logical_immediate(d, datasize, imm, n, op, setflags)
 }
 
@@ -11430,7 +11451,12 @@ function decode_eor_log_imm_aarch64_instrs_integer_logical_immediate (Rd, Rn, im
     if sf == 0b0 & N != 0b0 then {
         throw(Error_Undefined())
     } else ();
-    (imm, __ignore_29) = DecodeBitMasks(datasize, N, imms, immr, true);
+    let (__tup_0 : bits('datasize), _) =
+      DecodeBitMasks(datasize, N, imms, immr, true)
+    in
+      {
+          imm = __tup_0
+      };
     execute_aarch64_instrs_integer_logical_immediate(d, datasize, imm, n, op, setflags)
 }
 
@@ -21038,7 +21064,8 @@ function execute_aarch64_instrs_integer_conditional_compare_immediate (condition
             operand2 = not_vec(operand2);
             carry_in = 0b1
         } else ();
-        (__ignore_30, flags) = AddWithCarry(operand1, operand2, carry_in)
+        let (_, __tup_1 : bits(4)) = AddWithCarry(operand1, operand2, carry_in);
+        flags = __tup_1
     } else ();
     (PSTATE.N @ PSTATE.Z @ PSTATE.C @ PSTATE.V) = flags
 }
@@ -42247,7 +42274,8 @@ function execute_aarch64_instrs_integer_conditional_compare_register (condition,
             operand2 = not_vec(operand2);
             carry_in = 0b1
         } else ();
-        (__ignore_31, flags) = AddWithCarry(operand1, operand2, carry_in)
+        let (_, __tup_1 : bits(4)) = AddWithCarry(operand1, operand2, carry_in);
+        flags = __tup_1
     } else ();
     (PSTATE.N @ PSTATE.Z @ PSTATE.C @ PSTATE.V) = flags
 }
