@@ -83,14 +83,6 @@ function Step_CPU() = {
   };
 
   if fetch_ok then {
-    // test for ERET instruction from EL3_Secure - only supported in v8.4
-    if (opcode == 0xd69f_03e0) & (PSTATE.EL == EL3) & (SCR_EL3[0] == bitzero) then {
-      print(concat_str("UNIMPLEMENTED: EL2_Secure support (v8.4 feature) ",
-            concat_str(HexStr(UInt(opcode)),
-            "\n")));
-      exit()
-    };
-
     try {
       __BranchTaken = false;
       __DecodeA64(UInt(_PC), opcode);
