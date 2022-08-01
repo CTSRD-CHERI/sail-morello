@@ -1,0 +1,13 @@
+diff -u src.orig/v8_base.sail src/v8_base.sail
+--- src.orig/v8_base.sail	2022-07-26 10:39:11.113019581 +0100
++++ src/v8_base.sail	2022-07-26 11:51:55.178065014 +0100
+@@ -43706,6 +43706,7 @@
+             addressforbounds = ZeroExtend(address[msbit .. 0])
+         }
+     } else ();
++    assert(UInt(addressforbounds) < UInt(0xffffffffffffff00));
+     fault_type : Fault = Fault_None;
+     if CapIsTagClear(c) then {
+         fault_type = Fault_CapTag
+Only in src.orig/: v8_base.sail.orig
+Only in src.orig/: v8_base.sail.rej

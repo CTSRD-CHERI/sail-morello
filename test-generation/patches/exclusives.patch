@@ -1,0 +1,116 @@
+A simple model of exclusive accesses on a single processor that allows
+exact address/size matches, fails when the store address must be
+outside the largest possible marked block, and refuses to generate a
+test in more ambiguous situations.
+
+diff -u src.orig/impdefs.sail src/impdefs.sail
+--- src.orig/impdefs.sail	2022-07-29 10:31:11.714654277 +0100
++++ src/impdefs.sail	2022-08-01 10:32:51.381747005 +0100
+@@ -52,9 +52,38 @@
+ function HaveEL(el) = true
+ function HighestELUsingAArch32() = false
+ 
++union ExclusiveState = {
++  ExSt_Unknown : unit,
++  ExSt_Set : (bits(48), int),
++  ExSt_Clear : unit,
++}
++
++register __exclusive_state : ExclusiveState
++
++val __UNKNOWN_Unpredictable : unit -> Unpredictable
++
++function __UNKNOWN_Unpredictable () = undefined
++
+ function ProcessorID() = 0
+ function IsExclusiveGlobal(paddress, processorid, size) = true
+-function IsExclusiveLocal(paddress, processorid, size) = true
++function IsExclusiveLocal(paddress, processorid, size) = {
++    // Dummy read to generate address constraints
++    let _ = __read_mem(Read_exclusive, 64, ZeroExtend(paddress.address, 64), size);
++    match __exclusive_state {
++        ExSt_Unknown() => ConstrainUnpredictableBool(__UNKNOWN_Unpredictable()),
++        ExSt_Set(marked_address, marked_size) => {
++            // Be very strict about when an exclusive store works, but...
++            if paddress.address == marked_address & size == marked_size
++            then true
++            // ... only guarantee failure outside the marked block for the
++            // largest granule size.
++            else if (marked_address & 0xfffffffff800) == (paddress.address & 0xfffffffff800)
++                then ConstrainUnpredictableBool(__UNKNOWN_Unpredictable())
++                else false
++        },
++        ExSt_Clear() => false,
++    }
++}
+ function AArch64_IsExclusiveVA(address, processorid, size) = true
+ function AArch64_MarkExclusiveVA(address, processorid, size) = ()
+ function ExclusiveMonitorsStatus() = 0b0
+diff -u src.orig/stubs.sail src/stubs.sail
+--- src.orig/stubs.sail	2022-07-29 10:31:11.714654277 +0100
++++ src/stubs.sail	2022-08-01 10:29:46.346441836 +0100
+@@ -47,11 +47,19 @@
+ }
+ 
+ function ClearExclusiveByAddress (paddress, processorid, size) = {
+-    return()
++    __exclusive_state = match __exclusive_state {
++        ExSt_Unknown() => ExSt_Unknown(),
++        ExSt_Set(marked_address, marked_size) => {
++            if paddress.address == marked_address & size == marked_size
++            then ExSt_Clear()
++            else ExSt_Unknown()
++        },
++        ExSt_Clear() => ExSt_Clear(),
++    }
+ }
+ 
+ function ClearExclusiveLocal processorid = {
+-    return()
++    __exclusive_state = ExSt_Clear()
+ }
+ 
+ function ConsumptionOfSpeculativeDataBarrier () = {
+@@ -91,7 +99,7 @@
+ }
+ 
+ function MarkExclusiveLocal (paddress, processorid, size) = {
+-    return()
++    __exclusive_state = ExSt_Set(paddress.address, size)
+ }
+ 
+ function ProfilingSynchronizationBarrier () = {
+diff -u src.orig/v8_base.sail src/v8_base.sail
+--- src.orig/v8_base.sail	2022-07-29 10:31:11.714654277 +0100
++++ src/v8_base.sail	2022-07-29 14:05:47.803997977 +0100
+@@ -37804,7 +37804,7 @@
+ 
+ val ProcessorID : unit -> int
+ 
+-val IsExclusiveLocal : forall ('processorid 'size : Int).
++val IsExclusiveLocal : forall ('processorid 'size : Int), 'size > 0.
+   (FullAddress, int('processorid), int('size)) -> bool
+ 
+ val IsExclusiveGlobal : forall ('processorid 'size : Int).
+@@ -43161,6 +43161,12 @@
+         result.addrdesc.memattrs.shareable = true;
+         result.addrdesc.memattrs.outershareable = true
+     };
++
++    // Override shareable so that writes clear the exclusive monitor
++    // (because the test generator is running without the MMU during
++    // symbolic execution for speed, but the real test will have it on).
++    result.addrdesc.memattrs.shareable = true;
++
+     result.addrdesc.memattrs.outer = result.addrdesc.memattrs.inner;
+     result.addrdesc.memattrs = MemAttrDefaults(result.addrdesc.memattrs);
+     result.perms.ap = undefined : bits(3);
+@@ -43982,7 +43988,7 @@
+     AArch64_MarkExclusiveVA(address, ProcessorID(), size)
+ }
+ 
+-val AArch64_ExclusiveMonitorsPass : forall ('size : Int).
++val AArch64_ExclusiveMonitorsPass : forall ('size : Int), 'size > 0.
+   (bits(64), int('size)) -> bool effect {escape, rreg, undef, wreg}
+ 
+ function AArch64_ExclusiveMonitorsPass (address, size) = {

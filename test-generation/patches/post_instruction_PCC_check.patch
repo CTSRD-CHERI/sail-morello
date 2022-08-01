@@ -1,0 +1,63 @@
+diff -u src.orig/builtins.sail src/builtins.sail
+--- src.orig/builtins.sail	2022-07-25 21:17:05.811612128 +0100
++++ src/builtins.sail	2022-07-25 21:19:37.563030865 +0100
+@@ -48,9 +48,12 @@
+ 
+ val __ListConfig : unit -> unit
+ 
++register exception_not_yet_taken : bool
++
+ val EndOfInstruction : unit -> unit effect {escape}
+ 
+ function EndOfInstruction () = {
++    exception_not_yet_taken = false;
+     throw(Error_ExceptionTaken())
+ }
+ 
+Only in src: builtins.sail.orig
+Only in src: builtins.sail.rej
+diff -u src.orig/elfmain.sail src/elfmain.sail
+--- src.orig/elfmain.sail	2022-07-25 21:17:05.811612128 +0100
++++ src/elfmain.sail	2022-07-25 21:17:30.523518725 +0100
+@@ -48,12 +48,41 @@
+ val check_cycle_count = { c: "cycle_count" } : unit -> unit
+ val __GetVerbosity = {c: "sail_get_verbosity"}: unit -> bits(64) effect {rreg, undef}
+ 
++val post_toplevel_check : unit -> unit effect {escape}
++
++function post_toplevel_check() = {
++  // Bit of a hack for the test generator to ensure the final instruction leaves us with a good PCC
++  // Now also used to cause exceptions immediately rather than waiting for the next instruction
++  // fetch (note that when we don't want an exception we can drop paths that reach AArch64_TakeException
++  // from here)
++  try {
++      AArch64_CheckPCAlignment();
++      let _ = CheckPCCCapability();
++      ()
++  } catch {
++    exn if IsExceptionTaken(exn) => {
++      assert(exception_not_yet_taken);
++      // If we did take a new exception, then check the handler's PCC and really insist
++      // that it's good.
++      try {
++          AArch64_CheckPCAlignment();
++          let _ = CheckPCCCapability();
++	  ()
++      } catch {
++        exn if IsExceptionTaken(exn) => assert(false)
++      }
++    }
++  }
++}
++
+ val step_model : unit -> unit effect {escape}
+ 
+ function step_model() = {
+   SEE = -1;
++  exception_not_yet_taken = true;
+   __TopLevel();
+   __CycleEnd();
++  post_toplevel_check();
+   ()
+ }
+ 

@@ -1,0 +1,23 @@
+Tell the symbolic execution to make opcode a concrete value.
+
+diff -ur src.orig/step.sail src/step.sail
+--- src.orig/step.sail	2022-07-20 21:04:39.260743902 +0100
++++ src/step.sail	2022-07-20 21:08:38.608070887 +0100
+@@ -52,6 +52,8 @@
+   SSAdvance();
+ }
+ 
++val __monomorphize = "monomorphize" : forall 'n, 'n >= 0. bits('n) -> bits('n)
++
+ // Advance CPU by one cycle
+ val Step_CPU : unit -> unit effect {configuration, escape, undef, wreg, rreg, rmem, wmem}
+ 
+@@ -60,7 +62,7 @@
+   var oldPC : bits(64) = _PC;
+   var opcode : bits(32) = Zeros(32);
+   try {
+-    opcode = __FetchNextInstr();
++    opcode = __monomorphize(__FetchNextInstr());
+     __SetThisInstr(opcode);
+     fetch_ok = true;
+     if (__GetVerbosity()[1] == bitone) then {

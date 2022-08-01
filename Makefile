@@ -31,6 +31,9 @@ ISA_OUT_DIR = $(ROOT_DIR)/isabelle
 HOL_OUT_DIR = $(ROOT_DIR)/hol4
 C_OUT_DIR = $(ROOT_DIR)/c
 IR_OUT_DIR = $(ROOT_DIR)/ir
+TESTGEN_DIR=$(ROOT_DIR)/test-generation
+TESTGEN_SAIL_SRC_DIR = $(TESTGEN_DIR)/src
+TESTGEN_PATCH_DIR = $(TESTGEN_DIR)/patches
 
 SAIL_SRCS += v8_base.sail
 SAIL_SRCS += config.sail
@@ -38,6 +41,7 @@ SAIL_SRCS += sysops.sail
 SAIL_SRCS += instrs.sail
 
 SAIL_SRC_PATHS = $(addprefix $(SAIL_SRC_DIR)/,$(SAIL_SRCS))
+TESTGEN_SAIL_SRC_PATHS = $(addprefix $(TESTGEN_SAIL_SRC_DIR)/,$(SAIL_SRCS))
 
 DEVICES = no_devices.sail
 
@@ -51,6 +55,7 @@ EXTRA_SAIL_SRCS += map_clauses.sail
 EXTRA_SAIL_SRCS += event_clauses.sail
 EXTRA_SAIL_SRCS += stubs.sail
 EXTRA_SAIL_SRC_PATHS = $(addprefix $(SAIL_SRC_DIR)/,$(EXTRA_SAIL_SRCS))
+TESTGEN_EXTRA_SAIL_SRC_PATHS = $(addprefix $(TESTGEN_SAIL_SRC_DIR)/,$(EXTRA_SAIL_SRCS))
 
 SAIL_PRELUDE = prelude.sail builtins.sail
 DECODE_PRE = decode_start.sail
@@ -58,6 +63,11 @@ DECODE_POST = decode_end.sail
 
 STANDARD_SAILS = prelude.sail decode_start.sail decode_end.sail
 STANDARD_SAIL_PATHS = $(addprefix $(SAIL_SRC_DIR)/,$(STANDARD_SAILS))
+TESTGEN_STANDARD_SAIL_PATHS = $(addprefix $(TESTGEN_SAIL_SRC_DIR)/,$(STANDARD_SAILS))
+
+OTHER_SAILS = builtins.sail elfmain.sail
+OTHER_SAIL_PATHS = $(addprefix $(SAIL_SRC_DIR)/,$(OTHER_SAILS))
+TESTGEN_OTHER_SAIL_PATHS = $(addprefix $(TESTGEN_SAIL_SRC_DIR)/,$(OTHER_SAILS))
 
 ALL_SAILS = $(SAIL_PRELUDE) $(DECODE_PRE) $(SAIL_SRCS) $(EXTRA_SAIL_SRCS) $(EXTRA_GENERATED_SAIL_SRCS) $(DECODE_POST)
 
@@ -113,14 +123,37 @@ $(C_OUT_DIR)/morello_coverage: $(C_OUT_DIR)/morello_coverage.c
 gen_c: $(C_OUT_DIR)/morello
 gen_c_coverage: $(C_OUT_DIR)/morello_coverage
 
-$(IR_OUT_DIR)/morello.ir: $(SAIL_SRC_PATHS) $(SAIL_SRC_DIR)/elfmain.sail
+$(IR_OUT_DIR)/morello.ir: $(SAIL_SRC_PATHS) $(SAIL_SRC_DIR)/elfmain.sail $(SAIL_SRC_DIR)/isla-splice.sail
 	mkdir -p $(IR_OUT_DIR)
-	cd $(SAIL_SRC_DIR); $(ISLA_SAIL) -v 1 -mono_rewrites $(ALL_SAILS) elfmain.sail -o $(IR_OUT_DIR)/morello
+	cd $(SAIL_SRC_DIR); $(ISLA_SAIL) -v 1 -mono_rewrites $(ALL_SAILS) elfmain.sail -splice $(SAIL_SRC_DIR)/isla-splice.sail -o $(IR_OUT_DIR)/morello
 
 gen_ir: $(IR_OUT_DIR)/morello.ir
+
+TESTGEN_ALL_SAIL=$(TESTGEN_SAIL_SRC_PATHS) $(TESTGEN_EXTRA_SAIL_SRC_PATHS) $(TESTGEN_STANDARD_SAIL_PATHS) $(TESTGEN_OTHER_SAIL_PATHS)
+TESTGEN_PATCHES += mono_instr.patch post_instruction_PCC_check.patch no_high_vaddrs.patch exclusives.patch
+TESTGEN_PATCH_PATHS = $(addprefix $(TESTGEN_PATCH_DIR)/,$(TESTGEN_PATCHES))
+
+# Use a timestamp file to ensure that patch failure isn't ignored
+$(TESTGEN_ALL_SAIL) $(TESTGEN_DIR)/src.stamp: $(SAIL_SRC_PATHS) $(EXTRA_SAIL_SRC_PATHS) $(STANDARD_SAIL_PATHS) $(TESTGEN_PATCH_PATHS) $(OTHER_SAIL_PATHS)
+	mkdir -p $(TESTGEN_SAIL_SRC_DIR)
+	cp $(SAIL_SRC_PATHS) $(TESTGEN_SAIL_SRC_DIR)
+	cp $(EXTRA_SAIL_SRC_PATHS) $(TESTGEN_SAIL_SRC_DIR)
+	cp $(STANDARD_SAIL_PATHS) $(TESTGEN_SAIL_SRC_DIR)
+	cp $(OTHER_SAIL_PATHS) $(TESTGEN_SAIL_SRC_DIR)
+	cd $(TESTGEN_SAIL_SRC_DIR); \
+	for PATCH in $(TESTGEN_PATCH_PATHS); do \
+	  patch -p1 < $$PATCH; \
+	done
+	touch $(TESTGEN_DIR)/src.stamp
+
+$(TESTGEN_DIR)/morello-testgen.ir: $(TESTGEN_DIR)/src.stamp $(SAIL_SRC_DIR)/isla-splice.sail
+	cd $(TESTGEN_SAIL_SRC_DIR); $(ISLA_SAIL) -v 1 -mono_rewrites $(ALL_SAILS) elfmain.sail -splice $(SAIL_SRC_DIR)/isla-splice.sail -o $(TESTGEN_DIR)/morello-testgen
+
+gen_testgen: $(TESTGEN_DIR)/morello-testgen.ir
 
 clean:
 	rm -f $(LEM_OUT_DIR)/morello.lem $(LEM_OUT_DIR)/morello_types.lem
 	rm -f $(ISA_OUT_DIR)/Morello_types.thy $(ISA_OUT_DIR)/Morello.thy $(ISA_OUT_DIR)/Morello_lemmas.thy $(ISA_OUT_DIR)/ROOT
 	rm -f $(C_OUT_DIR)/morello.c $(C_OUT_DIR)/morello $(C_OUT_DIR)/morello_coverage.c $(C_OUT_DIR)/morello_coverage
 	rm -f $(IR_OUT_DIR)/morello.ir
+	rm -f $(TESTGEN_ALL_SAIL) $(TESTGEN_DIR)/morello-testgen.ir $(TESTGEN_DIR)/src.stamp
