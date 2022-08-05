@@ -94,18 +94,37 @@ function main() = {
 
 val isla_reset_registers = "reset_registers" : unit -> unit
 
+val isla_footprint_no_init : bits(32) -> bool effect {configuration, escape, rmem, rreg, undef, wmem, wreg}
+
+function isla_footprint_no_init(opcode) = {
+  SEE = -1;
+
+  __PC_changed = false;
+  __ThisInstr = opcode;
+  DBGEN = LOW;
+
+  isla_reset_registers();
+
+  __ThisInstrEnc = __A64;
+  __ThisInstr = opcode;
+
+  // The first cycle during footprint analysis is reserved for initialization, and ignored.
+  check_cycle_count();
+  try {
+    __DecodeA64(UInt(_PC), opcode);
+    true
+  } catch {
+    _ => false
+  }
+}
+
 val isla_footprint : bits(32) -> bool effect {configuration, escape, rmem, rreg, undef, wmem, wreg}
 
 function isla_footprint(opcode) = {
-  SEE = -1;
-
   __highest_el_aarch32 = false;
   TakeReset(COLD_RESET);
   AArch64_ResetGeneralRegisters();
   PSTATE.EL = EL0;
-  __PC_changed = false;
-  __ThisInstr = opcode;
-  DBGEN = LOW;
 
   _R00 = undefined;
   _R01 = undefined;
@@ -139,17 +158,5 @@ function isla_footprint(opcode) = {
   _R29 = undefined;
   _R30 = undefined;
 
-  isla_reset_registers();
-
-  __ThisInstrEnc = __A64;
-  __ThisInstr = opcode;
-
-  // The first cycle during footprint analysis is reserved for initialization, and ignored.
-  check_cycle_count();
-  try {
-    __DecodeA64(UInt(_PC), opcode);
-    true
-  } catch {
-    _ => false
-  }
+  isla_footprint_no_init(opcode)
 }
