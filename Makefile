@@ -29,6 +29,7 @@ SAIL_SRC_DIR = $(ROOT_DIR)/src
 LEM_OUT_DIR = $(ROOT_DIR)/lem
 ISA_OUT_DIR = $(ROOT_DIR)/isabelle
 HOL_OUT_DIR = $(ROOT_DIR)/hol4
+COQ_OUT_DIR = $(ROOT_DIR)/coq
 C_OUT_DIR = $(ROOT_DIR)/c
 IR_OUT_DIR = $(ROOT_DIR)/ir
 TESTGEN_DIR=$(ROOT_DIR)/test-generation
@@ -77,6 +78,7 @@ SAIL_C_FLAGS = -O -Oconstant_fold
 MUTREC_FLAGS = -const_prop_mutrec AArch64_TakeException -const_prop_mutrec AArch32_SecondStageTranslate -const_prop_mutrec AArch64_SecondStageTranslate
 
 LEM_SAIL_EXTRA_FLAGS = -splice patches/translation_stubs.sail -splice patches/unknown_capability.sail -splice patches/write_tag.sail -lem_lib Morello_bindings
+COQ_SAIL_EXTRA_FLAGS = -splice patches/translation_stubs.sail -splice patches/unknown_capability.sail -splice patches/write_tag_coq.sail
 
 check_sail: $(SAIL_SRC_PATHS)
 	cd $(SAIL_SRC_DIR); $(SAIL) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(ALL_SAILS)
@@ -103,6 +105,13 @@ $(ISA_OUT_DIR)/ROOT: etc/ROOT
 	cp etc/ROOT $(ISA_OUT_DIR)
 
 gen_isa: $(ISA_OUT_DIR)/Morello.thy $(ISA_OUT_DIR)/ROOT
+
+$(COQ_OUT_DIR)/morello.v: $(SAIL_SRC_PATHS)
+	mkdir -p $(COQ_OUT_DIR)
+	cp $(ASL2SAIL_DIR)/arm_extras.v $(COQ_OUT_DIR)
+	cd $(SAIL_SRC_DIR); $(SAIL) -coq -undefined_gen -coq_lib arm_extras -o morello -coq_output_dir $(COQ_OUT_DIR) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(COQ_SAIL_EXTRA_FLAGS) $(MUTREC_FLAGS) $(ALL_SAILS) coq_termination.sail
+
+gen_coq: $(COQ_OUT_DIR)/morello.v
 
 $(C_OUT_DIR)/morello.c: $(SAIL_SRC_PATHS) $(SAIL_SRC_DIR)/elfmain.sail
 	mkdir -p $(C_OUT_DIR)
@@ -154,6 +163,7 @@ gen_testgen: $(TESTGEN_DIR)/morello-testgen.ir
 clean:
 	rm -f $(LEM_OUT_DIR)/morello.lem $(LEM_OUT_DIR)/morello_types.lem
 	rm -f $(ISA_OUT_DIR)/Morello_types.thy $(ISA_OUT_DIR)/Morello.thy $(ISA_OUT_DIR)/Morello_lemmas.thy $(ISA_OUT_DIR)/ROOT
+	rm -f $(COQ_OUT_DIR)/morello.v $(COQ_OUT_DIR)/morello_types.v
 	rm -f $(C_OUT_DIR)/morello.c $(C_OUT_DIR)/morello $(C_OUT_DIR)/morello_coverage.c $(C_OUT_DIR)/morello_coverage
 	rm -f $(IR_OUT_DIR)/morello.ir
 	rm -f $(TESTGEN_ALL_SAIL) $(TESTGEN_DIR)/morello-testgen.ir $(TESTGEN_DIR)/src.stamp

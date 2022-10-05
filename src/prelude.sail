@@ -123,7 +123,7 @@ val UInt0 = {
   coq: "uint"
 } : forall 'n. bits('n) -> {'m, 0 <= 'm < 2 ^ 'n. int('m)}
 
-val UInt1 : forall 'n. (int('n), bits('n)) -> {'m, 0 <= 'm < 2 ^ 'n. int('m)}
+val UInt1 = { coq: "uint" } : forall 'n. (int('n), bits('n)) -> {'m, 0 <= 'm < 2 ^ 'n. int('m)}
 function UInt1(n, x) = unsigned(x)
 
 overload UInt = {UInt0, UInt1}
@@ -282,7 +282,7 @@ val HexStr = "hex_str" : int -> string
 val BoolStr : bool -> string
 function BoolStr b = match b { true => "true", false => "false" }
 
-val append_str = {ocaml: "concat_str", interpreter: "concat_str", lem: "stringAppend", c: "concat_str" } :
+val append_str = {ocaml: "concat_str", interpreter: "concat_str", lem: "stringAppend", c: "concat_str", coq: "String.append" } :
   (string, string) -> string
 
 function append_int(str: string, n: int) -> string = {
@@ -311,7 +311,8 @@ val putchar = {
   ocaml: "putchar",
   lem: "putchar",
   interpreter: "putchar",
-  c: "sail_putchar"
+  c: "sail_putchar",
+  coq: "putchar"
 } : int -> unit
 
 val __IMPDEF_boolean : string -> bool
