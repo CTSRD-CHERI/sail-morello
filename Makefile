@@ -21,6 +21,9 @@ export SAIL_LIB_DIR
 
 LEM = lem
 SED = sed
+COQ = coqc
+
+COQ_LIBS = -Q ../bbv/src/bbv bbv -Q $(SAIL_LIB_DIR)/coq Sail
 
 ISLA_SAIL=isla-sail
 
@@ -78,7 +81,7 @@ SAIL_C_FLAGS = -O -Oconstant_fold
 MUTREC_FLAGS = -const_prop_mutrec AArch64_TakeException -const_prop_mutrec AArch32_SecondStageTranslate -const_prop_mutrec AArch64_SecondStageTranslate
 
 LEM_SAIL_EXTRA_FLAGS = -splice patches/translation_stubs.sail -splice patches/unknown_capability.sail -splice patches/write_tag.sail -lem_lib Morello_bindings
-COQ_SAIL_EXTRA_FLAGS = -splice patches/translation_stubs.sail -splice patches/unknown_capability.sail -splice patches/write_tag_coq.sail
+COQ_SAIL_EXTRA_FLAGS = -splice patches/translation_stubs.sail -splice patches/unknown_capability.sail -splice patches/write_tag_coq.sail -splice patches/coq_printing.sail
 
 check_sail: $(SAIL_SRC_PATHS)
 	cd $(SAIL_SRC_DIR); $(SAIL) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(ALL_SAILS)
@@ -106,12 +109,28 @@ $(ISA_OUT_DIR)/ROOT: etc/ROOT
 
 gen_isa: $(ISA_OUT_DIR)/Morello.thy $(ISA_OUT_DIR)/ROOT
 
-$(COQ_OUT_DIR)/morello.v: $(SAIL_SRC_PATHS)
+$(COQ_OUT_DIR)/arm_extras.v: $(ASL2SAIL_DIR)/arm_extras.v
 	mkdir -p $(COQ_OUT_DIR)
-	cp $(ASL2SAIL_DIR)/arm_extras.v $(COQ_OUT_DIR)
+	cp $< $@
+
+$(COQ_OUT_DIR)/morello.v $(COQ_OUT_DIR)/morello_types.v: $(SAIL_SRC_PATHS)
+	mkdir -p $(COQ_OUT_DIR)
 	cd $(SAIL_SRC_DIR); $(SAIL) -coq -undefined_gen -coq_lib arm_extras -o morello -coq_output_dir $(COQ_OUT_DIR) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(COQ_SAIL_EXTRA_FLAGS) $(MUTREC_FLAGS) $(ALL_SAILS) coq_termination.sail
 
+$(COQ_OUT_DIR)/%.vo: $(COQ_OUT_DIR)/%.v
+	$(COQ) -time $(COQ_LIBS) -Q $(COQ_OUT_DIR) '' $<
+
+$(COQ_OUT_DIR)/morello.vo: $(COQ_OUT_DIR)/arm_extras.vo $(COQ_OUT_DIR)/morello_types.vo
+
+$(COQ_OUT_DIR)/extract/run.native: $(COQ_OUT_DIR)/morello.vo $(SAIL_SRC_DIR)/coq-extraction/*
+	mkdir -p $(COQ_OUT_DIR)/extract
+	cd $(COQ_OUT_DIR)/extract; coqtop $(COQ_LIBS) -Q $(COQ_OUT_DIR) '' -batch -lv $(SAIL_SRC_DIR)/coq-extraction/extract.v
+	cd $(COQ_OUT_DIR)/extract; ln -snf $(SAIL_SRC_DIR)/coq-extraction/*.ml .
+	cd $(COQ_OUT_DIR)/extract; ocamlbuild -use-ocamlfind -tag debug -tag 'package(linksem)' run.native
+
 gen_coq: $(COQ_OUT_DIR)/morello.v
+gen_coq_build: $(COQ_OUT_DIR)/morello.vo
+gen_coq_extract: $(COQ_OUT_DIR)/extract/run.native
 
 $(C_OUT_DIR)/morello.c: $(SAIL_SRC_PATHS) $(SAIL_SRC_DIR)/elfmain.sail
 	mkdir -p $(C_OUT_DIR)
@@ -163,7 +182,8 @@ gen_testgen: $(TESTGEN_DIR)/morello-testgen.ir
 clean:
 	rm -f $(LEM_OUT_DIR)/morello.lem $(LEM_OUT_DIR)/morello_types.lem
 	rm -f $(ISA_OUT_DIR)/Morello_types.thy $(ISA_OUT_DIR)/Morello.thy $(ISA_OUT_DIR)/Morello_lemmas.thy $(ISA_OUT_DIR)/ROOT
-	rm -f $(COQ_OUT_DIR)/morello.v $(COQ_OUT_DIR)/morello_types.v
+	rm -f $(COQ_OUT_DIR)/arm_extras.v $(COQ_OUT_DIR)/morello.v $(COQ_OUT_DIR)/morello_types.v
+	rm -rf $(COQ_OUT_DIR)/extract
 	rm -f $(C_OUT_DIR)/morello.c $(C_OUT_DIR)/morello $(C_OUT_DIR)/morello_coverage.c $(C_OUT_DIR)/morello_coverage
 	rm -f $(IR_OUT_DIR)/morello.ir
 	rm -f $(TESTGEN_ALL_SAIL) $(TESTGEN_DIR)/morello-testgen.ir $(TESTGEN_DIR)/src.stamp

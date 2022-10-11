@@ -10,6 +10,7 @@ lem/morello.lem
 lem/morello_types.lem
 lem/prelude.lem
 src/z3_problems
+coq
 
 # Linux booting files
 Image
