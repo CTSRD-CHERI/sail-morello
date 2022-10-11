@@ -81,7 +81,7 @@ SAIL_C_FLAGS = -O -Oconstant_fold
 MUTREC_FLAGS = -const_prop_mutrec AArch64_TakeException -const_prop_mutrec AArch32_SecondStageTranslate -const_prop_mutrec AArch64_SecondStageTranslate
 
 LEM_SAIL_EXTRA_FLAGS = -splice patches/translation_stubs.sail -splice patches/unknown_capability.sail -splice patches/write_tag.sail -lem_lib Morello_bindings
-COQ_SAIL_EXTRA_FLAGS = -splice patches/translation_stubs.sail -splice patches/unknown_capability.sail -splice patches/write_tag_coq.sail -splice patches/coq_printing.sail
+COQ_SAIL_EXTRA_FLAGS = -splice patches/unknown_capability.sail -splice patches/write_tag_coq.sail -splice patches/coq_printing.sail
 
 check_sail: $(SAIL_SRC_PATHS)
 	cd $(SAIL_SRC_DIR); $(SAIL) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(ALL_SAILS)

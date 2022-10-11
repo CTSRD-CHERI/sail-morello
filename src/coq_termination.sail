@@ -7,3 +7,6 @@ termination_measure FPRoundBase
 
 termination_measure FPRSqrtEstimate
   while 64 + exp
+
+termination_measure AArch64_TranslationTableWalk
+  until 4 - level
