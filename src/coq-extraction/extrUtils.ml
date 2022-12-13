@@ -4,15 +4,10 @@ let implode l =
     | [] -> Bytes.to_string res
     | c :: l -> Bytes.set res i c; imp (i + 1) l in
   imp 0 l;;
-let nat_word_length w =
-  match w with
-  | Word.WS (_, i, _) -> Datatypes.S i
-  | Word.WO -> Datatypes.O
-;;
-let string_of_word w = implode (String0.string_of_word (nat_word_length w) w);;
-let word_of_int length i = Word.coq_NToWord (ExtrOcamlIntConv.nat_of_int length) (ExtrOcamlIntConv.n_of_int i);; 
+let string_of_word sz w = implode (String0.string_of_word (ExtrOcamlIntConv.nat_of_int sz) w);;
+let word_of_int length i = MachineWord.MachineWord.coq_N_to_word (ExtrOcamlIntConv.nat_of_int length) (ExtrOcamlIntConv.n_of_int i);; 
 let mword_of_int length i = Values.mword_of_int (ExtrOcamlIntConv.z_of_int length) (ExtrOcamlIntConv.z_of_int i);;
-let int_of_word w = ExtrOcamlIntConv.int_of_n (Word.wordToN (nat_word_length w) w);;
+let int_of_mword sz w = ExtrOcamlIntConv.int_of_z (Operators_mwords.uint (ExtrOcamlIntConv.z_of_int sz) w);;
 
 let runS (exp : _ State_monad.monadS) s =
   match exp s State_monad.default_choice with

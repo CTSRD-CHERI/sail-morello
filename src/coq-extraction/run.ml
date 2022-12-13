@@ -11,7 +11,7 @@ Arg.parse options (fun s -> opt_files := s :: !opt_files) "run";;
 
 Stdlib.List.iter Elf_loader.load_elf !opt_files;;
 
-Elf_loader.state := { !Elf_loader.state with ss_regstate = { !Elf_loader.state.ss_regstate with coq_CFG_RVBAR = ExtrUtils.word_of_int 64 0x10300000 } };;
+Elf_loader.state := { !Elf_loader.state with ss_regstate = { !Elf_loader.state.ss_regstate with coq_CFG_RVBAR = ExtrUtils.mword_of_int 64 0x10300000 } };;
 
 let runS exp =
   let r,s = ExtrUtils.runS exp !Elf_loader.state in
@@ -30,12 +30,10 @@ let step () = begin
   end
 ;;
 
-print_endline "Running...";;
-
 let loop () =
   while true do
     if !opt_verbose then
-      Printf.printf "PC = %x\n" (ExtrUtils.int_of_word !Elf_loader.state.ss_regstate._PC);
+      Printf.printf "PC = %x\n" (ExtrUtils.int_of_mword 64 !Elf_loader.state.ss_regstate._PC);
     step();
     if !opt_cycle_limit > 0 then opt_cycle_limit := !opt_cycle_limit - 1;
     if !opt_cycle_limit = 0 then failwith "Cycle limit reached"
