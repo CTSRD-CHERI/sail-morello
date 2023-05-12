@@ -38103,7 +38103,7 @@ function HaveCRCExt () = {
     return(HasArchVersion(ARMv8p1) | __IMPDEF_boolean("Have CRC extension"))
 }
 
-val BitReverse : forall ('N : Int). bits('N) -> bits('N) effect {undef}
+val BitReverse : forall ('N : Int), 'N >= 0. bits('N) -> bits('N) effect {undef}
 
 function BitReverse data = {
     result : bits('N) = undefined;

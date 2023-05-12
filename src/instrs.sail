@@ -40426,7 +40426,7 @@ function clause __DecodeA64 (pc, ([bitzero, bitone, bitzero, bitone, bitone, bit
 }
 
 val execute_aarch64_instrs_vector_transfer_vector_cpy_dup_sisd : forall 'd 'datasize 'elements 'esize 'idxdsize 'index 'n,
-  (0 <= 'n & 'n <= 31 & 'idxdsize in {64, 128} & 'esize in {8, 16, 32, 64, 128, 256} & 0 <= 'd & 'd <= 31).
+  (0 <= 'n & 'n <= 31 & 'idxdsize in {64, 128} & 'esize in {8, 16, 32, 64, 128, 256} & 0 <= 'd & 'd <= 31 & 'datasize >= 0).
   (int('d), int('datasize), int('elements), int('esize), int('idxdsize), int('index), int('n)) -> unit effect {escape, rreg, undef, wreg}
 
 function execute_aarch64_instrs_vector_transfer_vector_cpy_dup_sisd (d, datasize, elements, esize, idxdsize, index, n) = {
