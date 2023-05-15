@@ -45071,11 +45071,10 @@ function CapSetObjectType (c__arg, o) = {
     c[CAP_OTYPE_HI_BIT .. CAP_OTYPE_LO_BIT] = o[CAP_OTYPE_NUM_BITS - 1 .. 0];
     return(c)
 }
+val CapSetBoundsAndGetExact : forall ('exact : Bool).
+  (bits(129), bits(CAP_LENGTH_NUM_BITS), bool('exact)) -> (bits(129), bool) effect {escape, undef}
 
-val CapSetBounds : forall ('exact : Bool).
-  (bits(129), bits(CAP_LENGTH_NUM_BITS), bool('exact)) -> bits(129) effect {escape, undef}
-
-function CapSetBounds (c, req_len, exact) = {
+function CapSetBoundsAndGetExact (c, req_len, exact) = {
     L_ie : bits(13) = undefined;
     obase : bits(CAP_BOUND_NUM_BITS) = undefined;
     olimit : bits(CAP_BOUND_NUM_BITS) = undefined;
@@ -45161,7 +45160,15 @@ function CapSetBounds (c, req_len, exact) = {
     if exact & (lostBottom | lostTop) then {
         newc[CAP_TAG_BIT] = Bit(0b0)
     } else ();
-    return(newc)
+    return(newc, not_bool(lostBottom | lostTop))
+}
+
+val CapSetBounds : forall ('exact : Bool).
+  (bits(129), bits(CAP_LENGTH_NUM_BITS), bool('exact)) -> bits(129) effect {escape, undef}
+
+function CapSetBounds (c, req_len, exact) = {
+  let (newc, _) = CapSetBoundsAndGetExact(c, req_len, exact);
+  return(newc)
 }
 
 val CapGetRepresentableMask : bits(CAP_VALUE_NUM_BITS) -> bits(CAP_VALUE_NUM_BITS) effect {escape, undef}
