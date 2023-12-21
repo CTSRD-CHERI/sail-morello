@@ -101,6 +101,7 @@ function isla_footprint_no_init(opcode) = {
 
   __PC_changed = false;
   __ThisInstr = opcode;
+  __currentInstrLength = 4;
   DBGEN = LOW;
 
   isla_reset_registers();
@@ -112,6 +113,7 @@ function isla_footprint_no_init(opcode) = {
   check_cycle_count();
   try {
     __DecodeA64(UInt(_PC), opcode);
+    if (__PC_changed == false) then _PC = _PC + __currentInstrLength else ();
     true
   } catch {
     _ => false
