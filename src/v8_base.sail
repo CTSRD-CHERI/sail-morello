@@ -37263,9 +37263,9 @@ register __CNTControlBase : bits(48)
 
 enum __InstrEnc = {__A64, __A32, __T16, __T32}
 
-register __ThisInstr : bits(32)
+register __ThisInstr : bits(32) = 0x00000000
 
-register __ThisInstrEnc : __InstrEnc
+register __ThisInstrEnc : __InstrEnc = __A64
 
 union instr_ast = {
   Instr_BLRR_C_C : (bits(2), bits(5)),
@@ -37317,7 +37317,7 @@ union instr_ast = {
   Instr_Other : bits(32)
 }
 
-register __ThisInstrAbstract : instr_ast
+register __ThisInstrAbstract : instr_ast = Instr_Other(0x00000000)
 
 val __SetThisInstr : bits(32) -> unit effect {wreg}
 

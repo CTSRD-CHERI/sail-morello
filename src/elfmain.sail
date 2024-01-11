@@ -85,7 +85,7 @@ function main() = {
     }
   } catch {
     Error_ImplementationDefined(s) => {
-      print(concat_str("Unsupported implementation defined behaviour: ", s));
+      print_endline(concat_str("Unsupported implementation defined behaviour: ", s));
     }
   }
 }
