@@ -99,9 +99,8 @@ val isla_footprint_no_init : bits(32) -> bool effect {configuration, escape, rme
 function isla_footprint_no_init(opcode) = {
   SEE = -1;
 
-  __PC_changed = false;
+  __BranchTaken = false;
   __ThisInstr = opcode;
-  __currentInstrLength = 4;
   DBGEN = LOW;
 
   isla_reset_registers();
@@ -113,7 +112,7 @@ function isla_footprint_no_init(opcode) = {
   check_cycle_count();
   try {
     __DecodeA64(UInt(_PC), opcode);
-    if (__PC_changed == false) then _PC = _PC + __currentInstrLength else ();
+    Step_PC();
     true
   } catch {
     _ => false

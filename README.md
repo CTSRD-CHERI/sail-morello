@@ -28,9 +28,14 @@ from the Sail specification (although for the C emulator, they contain only the
 source, no binaries;  use the `gen_c` Makefile target to build a binary).
 
 To freshly build the artifacts, make sure that a recent version of [Sail][sail]
-is installed (last tested using revision `87118b39`), and use the Makefile
+is installed (last tested using `opam` version `sail.0.17.1`), and use the Makefile
 target `gen_c` to generate an emulator, and `gen_isa` to generate a model for
 the Isabelle theorem prover.
+
+Building `morello.ir` depends additionally on `isla-sail`: 
+check out a development version of `isla` (version tested `1ac01cd`), 
+`cd` into `isla/isla-sail`, run `make` and then from the current path run 
+`PATH=[path to isla-sail]:$PATH make gen_ir`.
 
 The `boot.sh` script downloads, builds, and runs a (non-capability AArch64)
 version of Linux above the C emulator.
