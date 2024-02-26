@@ -39869,11 +39869,11 @@ function FPRecpX (N, op, fpcr) = {
     let frac : bits('N - ('esize + 1)) = Zeros();
     match 'N {
       16 => {
-          assert(constraint((10 <= 10 + '_esize - 1 & 10 + '_esize - 1 < 'N | not('N == 16))));
+          assert(constraint((10 <= 10 + 'esize - 1 & 10 + 'esize - 1 < 'N | not('N == 16))));
           exp = op[10 + esize - 1 .. 10]
       },
       32 => {
-          assert(constraint((23 <= 23 + '_esize - 1 & 23 + '_esize - 1 < 'N | not('N == 32))));
+          assert(constraint((23 <= 23 + 'esize - 1 & 23 + 'esize - 1 < 'N | not('N == 32))));
           exp = op[23 + esize - 1 .. 23]
       },
       64 => {
