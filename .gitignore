@@ -10,7 +10,13 @@ lem/morello.lem
 lem/morello_types.lem
 lem/prelude.lem
 src/z3_problems
-coq
+coq/morello_types.v
+coq/morello.v
+coq/*.vo
+coq/*.vok
+coq/*.vos
+coq/*.glob
+coq/.*.aux
 
 # Linux booting files
 Image

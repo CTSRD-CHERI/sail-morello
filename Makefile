@@ -109,10 +109,6 @@ $(ISA_OUT_DIR)/ROOT: etc/ROOT
 
 gen_isa: $(ISA_OUT_DIR)/Morello.thy $(ISA_OUT_DIR)/ROOT
 
-$(COQ_OUT_DIR)/arm_extras.v: $(ASL2SAIL_DIR)/arm_extras.v
-	mkdir -p $(COQ_OUT_DIR)
-	cp $< $@
-
 $(COQ_OUT_DIR)/morello.v $(COQ_OUT_DIR)/morello_types.v: $(SAIL_SRC_PATHS)
 	mkdir -p $(COQ_OUT_DIR)
 	cd $(SAIL_SRC_DIR); $(SAIL) -coq -undefined_gen -coq_lib arm_extras -o morello -coq_output_dir $(COQ_OUT_DIR) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(COQ_SAIL_EXTRA_FLAGS) $(MUTREC_FLAGS) $(ALL_SAILS) coq_termination.sail
@@ -182,7 +178,7 @@ gen_testgen: $(TESTGEN_DIR)/morello-testgen.ir
 clean:
 	rm -f $(LEM_OUT_DIR)/morello.lem $(LEM_OUT_DIR)/morello_types.lem
 	rm -f $(ISA_OUT_DIR)/Morello_types.thy $(ISA_OUT_DIR)/Morello.thy $(ISA_OUT_DIR)/Morello_lemmas.thy $(ISA_OUT_DIR)/ROOT
-	rm -f $(COQ_OUT_DIR)/arm_extras.v $(COQ_OUT_DIR)/morello.v $(COQ_OUT_DIR)/morello_types.v
+	rm -f $(COQ_OUT_DIR)/morello.v $(COQ_OUT_DIR)/morello_types.v
 	rm -rf $(COQ_OUT_DIR)/extract
 	rm -f $(C_OUT_DIR)/morello.c $(C_OUT_DIR)/morello $(C_OUT_DIR)/morello_coverage.c $(C_OUT_DIR)/morello_coverage
 	rm -f $(IR_OUT_DIR)/morello.ir
