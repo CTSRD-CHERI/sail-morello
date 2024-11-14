@@ -40532,7 +40532,7 @@ function PAMax () = {
 val Have16bitVMID : unit -> bool
 
 function Have16bitVMID () = {
-    return(HaveEL(EL2) & __IMPDEF_boolean(""))
+    return(HaveEL(EL2) & __IMPDEF_boolean("Has 16-bit VMID"))
 }
 
 val HasS2Translation : unit -> bool effect {escape, rreg, undef}

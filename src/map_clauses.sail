@@ -179,6 +179,9 @@ and __IMPDEF_boolean_map (x if x == "Has large 52-bit PA/IPA support") = {
 and __IMPDEF_boolean_map (x if x == "Has large 52-bit VA support") = {
     return(true)
 }
+and __IMPDEF_boolean_map (x if x == "Has 16-bit VMID") = {
+    return(true)
+}
 and __IMPDEF_boolean_map x = {
     throw(Error_ImplementationDefined("Unrecognized boolean"))
 }
