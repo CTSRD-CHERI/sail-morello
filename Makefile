@@ -6,16 +6,8 @@ ifeq ($(ASL2SAIL),)
 $(warning Unable to find asl_to_sail)
 endif
 
-# Attempt to work with either sail from opam or built from repo in SAIL_DIR
-ifneq ($(SAIL_DIR),)
-# Use sail repo in SAIL_DIR
-SAIL:=$(SAIL_DIR)/sail
-export SAIL_DIR
-else
-# Use sail from opam package
-SAIL_DIR:=$(shell opam config var sail:share)
-SAIL:=sail
-endif
+SAIL?=sail
+SAIL_DIR:=$(shell sail --dir)
 SAIL_LIB_DIR:=$(SAIL_DIR)/lib
 export SAIL_LIB_DIR
 
@@ -75,7 +67,8 @@ TESTGEN_OTHER_SAIL_PATHS = $(addprefix $(TESTGEN_SAIL_SRC_DIR)/,$(OTHER_SAILS))
 
 ALL_SAILS = $(SAIL_PRELUDE) $(DECODE_PRE) $(SAIL_SRCS) $(EXTRA_SAIL_SRCS) $(EXTRA_GENERATED_SAIL_SRCS) $(DECODE_POST)
 
-SAIL_FLAGS = -verbose 1 -memo_z3 -infer_effects -non_lexical_flow -no_warn
+SAIL_FLAGS = --require-version 0.18.0
+SAIL_FLAGS+= -verbose 1 -memo_z3 -non_lexical_flow -no_warn
 LEM_FLAGS = -undefined_gen -mono_rewrites -auto_mono -lem_mwords -grouped_regstate
 SAIL_C_FLAGS = -O -Oconstant_fold
 MUTREC_FLAGS = -const_prop_mutrec AArch64_TakeException -const_prop_mutrec AArch32_SecondStageTranslate -const_prop_mutrec AArch64_SecondStageTranslate
