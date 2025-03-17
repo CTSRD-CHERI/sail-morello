@@ -16,7 +16,7 @@ diff -u src.orig/impdefs.sail src/impdefs.sail
 +  ExSt_Clear : unit,
 +}
 +
-+register __exclusive_state : ExclusiveState
++register __exclusive_state : ExclusiveState = ExSt_Unknown()
 +
 +val __UNKNOWN_Unpredictable : unit -> Unpredictable
 +
