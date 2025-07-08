@@ -40,7 +40,7 @@ check out a development version of `isla` (version tested `1ac01cd`),
 The `boot.sh` script downloads, builds, and runs a (non-capability AArch64)
 version of Linux above the C emulator.
 
-Building the Rocq (Coq) definitions requires a version of Sail and [Coq-Sail]().
+Building the Rocq (Coq) definitions requires a version of Sail and [Coq-Sail](https://github.com/rems-project/coq-sail).
 The script below clones and installs the latest versions of their repos.
 Assuming you have opam it should work as-is. Once you've installed them in
 your opam switch, run `make gen_coq` from this directory to build the Rocq
