@@ -40,6 +40,30 @@ check out a development version of `isla` (version tested `1ac01cd`),
 The `boot.sh` script downloads, builds, and runs a (non-capability AArch64)
 version of Linux above the C emulator.
 
+Building the Rocq (Coq) definitions requires a version of Sail and [Coq-Sail]().
+The script below clones and installs the latest versions of their repos.
+Assuming you have opam it should work as-is. Once you've installed them in
+your opam switch, run `make gen_coq` from this directory to build the Rocq
+definitions or `make gen_coq_build` to additionally compile them.
+
+```bash
+# Install the latest versions of sail and coq-sail
+# Tested with opam 2.2.1
+opam switch create sail-cheri-riscv 4.14.1
+eval $(opam env)
+opam repo add rocq-released https://rocq-prover.org/opam/released
+opam pin add coq 8.20.0
+# Add sail, tested with commit 5457446
+git clone https://github.com/rems-project/sail.git
+cd sail
+opam install .
+cd ..
+# Add coq-sail, tested with commit ae4cd3f
+git clone https://github.com/rems-project/coq-sail.git
+cd coq-sail
+opam install .
+```
+
 ## Usage
 
 A formal proof of reachable capability monotonicity, the main intended security
