@@ -49,7 +49,7 @@ definitions or `make gen_coq_build` to additionally compile them.
 ```bash
 # Install the latest versions of sail and coq-sail
 # Tested with opam 2.2.1
-opam switch create sail-cheri-riscv 4.14.1
+opam switch create sail-cheri 4.14.1
 eval $(opam env)
 opam repo add rocq-released https://rocq-prover.org/opam/released
 opam pin add coq 8.20.0
