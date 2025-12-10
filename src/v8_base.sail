@@ -37893,17 +37893,17 @@ function IllegalExceptionReturn spsr = {
 val AArch64_GenerateDebugExceptionsFrom : forall ('secure : Bool).
   (bits(2), bool('secure), bits(1)) -> bool effect {escape, rreg, undef}
 
-function AArch64_GenerateDebugExceptionsFrom (from, secure, mask) = {
+function AArch64_GenerateDebugExceptionsFrom (from', secure, mask) = {
     if (Slice(OSLSR_EL1, 1, 1) == 0b1 | DoubleLockStatus()) | Halted() then {
         return(false)
     } else ();
     let route_to_el2 : bool = (HaveEL(EL2) & not_bool(secure)) & (Slice(HCR_EL2, 27, 1) == 0b1 | Slice(MDCR_EL2, 8, 1) == 0b1);
     let target : bits(2) = if route_to_el2 then EL2 else EL1;
     enabled : bool = (not_bool(HaveEL(EL3)) | not_bool(secure)) | Slice(MDCR_EL3, 16, 1) == 0b0;
-    if from == target then {
+    if from' == target then {
         enabled = (enabled & Slice(MDSCR_EL1, 13, 1) == 0b1) & mask == 0b0
     } else {
-        enabled = enabled & UInt(target) > UInt(from)
+        enabled = enabled & UInt(target) > UInt(from')
     };
     return(enabled)
 }
