@@ -2262,18 +2262,26 @@ function clause __DecodeA64 (pc, ([bitone, bitone, bitzero, bitzero, bitzero, bi
     decode_BLRS_C_C_C(Cm, opc, Cn)
 }
 
+val PrepareBranchTarget : (bits(129)) -> bits(129) effect {escape, rreg, undef}
+
+function PrepareBranchTarget (target) = {
+    CheckCapabilitiesEnabled();
+    var local_target : bits(129) = target;
+    if not_bool(IsInRestricted()) & not_bool(CapCheckPermissions(local_target, CAP_PERM_EXECUTIVE)) then {
+        local_target = CapWithTagClear(local_target)
+    } else ();
+    if (CapIsTagSet(local_target) & CapIsSealed(local_target)) & CapGetObjectType(local_target) == CAP_SEAL_TYPE_RB then {
+        local_target = CapUnseal(local_target)
+    } else ();
+    local_target
+}
+
 val execute_BR_C_C : forall ('n : Int), (0 <= 'n & 'n <= 31).
   (BranchType, int('n)) -> unit effect {escape, rreg, undef, wreg}
 
 function execute_BR_C_C (branch_type, n) = {
-    CheckCapabilitiesEnabled();
     target : bits(129) = C_read(n);
-    if not_bool(IsInRestricted()) & not_bool(CapCheckPermissions(target, CAP_PERM_EXECUTIVE)) then {
-        target = CapWithTagClear(target)
-    } else ();
-    if (CapIsTagSet(target) & CapIsSealed(target)) & CapGetObjectType(target) == CAP_SEAL_TYPE_RB then {
-        target = CapUnseal(target)
-    } else ();
+    target = PrepareBranchTarget(target);
     BranchXToCapability(target, branch_type)
 }
 
@@ -36058,7 +36066,10 @@ val execute_aarch64_instrs_branch_unconditional_register : forall ('n : Int), (0
 
 function execute_aarch64_instrs_branch_unconditional_register (branch_type, n) = {
     target : bits(129) = undefined;
-    if [CCTLR_read__1()[3]] == 0b1 then {
+    if IsInC64() then {
+        target = if n == 31 then CSP_read() else C_read(n);
+        target = PrepareBranchTarget(target)
+    } else if [CCTLR_read__1()[3]] == 0b1 then {
         target = CapSetOffset(PCC_read(), X_read(63 - 0 + 1, n))
     } else {
         target = CapSetValue(PCC_read(), X_read(63 - 0 + 1, n))
