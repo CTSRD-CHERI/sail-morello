@@ -36087,7 +36087,7 @@ function execute_aarch64_instrs_branch_unconditional_register (branch_type, n) =
             X_set(64, 30) = PC_read() + 4
         }
     } else ();
-    BranchToCapability(target, branch_type)
+    BranchXToCapability(target, branch_type)
 }
 
 val decode_bra_aarch64_instrs_branch_unconditional_register : (bits(5), bits(5), bits(1), bits(1), bits(2), bits(1)) -> unit effect {escape, rreg, undef, wreg}
