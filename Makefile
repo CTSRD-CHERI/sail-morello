@@ -123,16 +123,14 @@ gen_coq_extract: $(COQ_OUT_DIR)/extract/run.native
 
 $(C_OUT_DIR)/morello.c: $(SAIL_SRC_PATHS) $(SAIL_SRC_DIR)/elfmain.sail
 	mkdir -p $(C_OUT_DIR)
-	cd $(SAIL_SRC_DIR); $(SAIL) -c $(SAIL_C_FLAGS) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(ALL_SAILS) elfmain.sail > $(C_OUT_DIR)/morello.c.temp
-	mv $(C_OUT_DIR)/morello.c.temp $(C_OUT_DIR)/morello.c
+	cd $(SAIL_SRC_DIR); $(SAIL) -c $(SAIL_C_FLAGS) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(ALL_SAILS) elfmain.sail -o $(C_OUT_DIR)/morello
 
 $(C_OUT_DIR)/morello: $(C_OUT_DIR)/morello.c
 	gcc -O2 -g -DHAVE_SETCONFIG $(C_OUT_DIR)/morello.c $(SAIL_DIR)/lib/*.c -lgmp -lz -I $(SAIL_DIR)/lib/ -o $(C_OUT_DIR)/morello
 
 $(C_OUT_DIR)/morello_coverage.c: $(SAIL_SRC_PATHS) $(SAIL_SRC_DIR)/elfmain.sail
 	mkdir -p $(C_OUT_DIR)
-	cd $(SAIL_SRC_DIR); $(SAIL) -c -c_coverage $(C_OUT_DIR)/all_branches $(SAIL_C_FLAGS) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(ALL_SAILS) elfmain.sail > $(C_OUT_DIR)/morello_coverage.c.temp
-	mv $(C_OUT_DIR)/morello_coverage.c.temp $(C_OUT_DIR)/morello_coverage.c
+	cd $(SAIL_SRC_DIR); $(SAIL) -c -c_coverage $(C_OUT_DIR)/all_branches $(SAIL_C_FLAGS) $(SAIL_FLAGS) $(SAIL_EXTRA_FLAGS) $(ALL_SAILS) elfmain.sail -o $(C_OUT_DIR)/morello_coverage
 
 $(C_OUT_DIR)/morello_coverage: $(C_OUT_DIR)/morello_coverage.c
 	gcc -O2 -DHAVE_SETCONFIG $(C_OUT_DIR)/morello_coverage.c $(SAIL_DIR)/lib/*.c -lgmp -lz -I $(SAIL_DIR)/lib/ -L ../sail/lib/coverage/ -lsail_coverage -lpthread -ldl -o $(C_OUT_DIR)/morello_coverage
@@ -173,6 +171,6 @@ clean:
 	rm -f $(ISA_OUT_DIR)/Morello_types.thy $(ISA_OUT_DIR)/Morello.thy $(ISA_OUT_DIR)/Morello_lemmas.thy $(ISA_OUT_DIR)/ROOT
 	rm -f $(COQ_OUT_DIR)/morello.v $(COQ_OUT_DIR)/morello_types.v
 	rm -rf $(COQ_OUT_DIR)/extract
-	rm -f $(C_OUT_DIR)/morello.c $(C_OUT_DIR)/morello $(C_OUT_DIR)/morello_coverage.c $(C_OUT_DIR)/morello_coverage
+	rm -f $(C_OUT_DIR)/morello.c $(C_OUT_DIR)/morello.h $(C_OUT_DIR)/morello $(C_OUT_DIR)/morello_coverage.c $(C_OUT_DIR)/morello_coverage.h $(C_OUT_DIR)/morello_coverage
 	rm -f $(IR_OUT_DIR)/morello.ir
 	rm -f $(TESTGEN_ALL_SAIL) $(TESTGEN_DIR)/morello-testgen.ir $(TESTGEN_DIR)/src.stamp
